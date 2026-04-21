@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.5
+
+- Removed the `PendingFileRenameOperations` check from the pending-reboot detector. That registry value is set by nearly any MSI uninstall, Windows Update cleanup, or routine file replacement, and almost never corresponds to a reboot that actually matters. Including it caused "Reboot Pending" badges to appear on a large fraction of perfectly healthy machines and desensitized techs to the real indicators.
+- Remaining pending-reboot signals: Component Based Servicing, Windows Update, ConfigMgr client, Domain join, Computer rename. These are all cases where ignoring the pending state can actually cause problems during a repair run.
+
 ## v2.4
 
 - Added staleness check on launch. The tool fetches `VERSION.txt` from the GitHub repo's raw URL and compares against the running version. If a newer version is available, an amber "Update available: vX.Y (click to view)" badge appears next to the version number in the footer. Clicking the badge opens the repo's releases page.

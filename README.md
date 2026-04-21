@@ -42,7 +42,7 @@ The GUI header displays:
 
 - System manufacturer, model, and OS version
 - System uptime (formatted as days/hours/minutes)
-- Pending reboot status with reasons (Component servicing, Windows Update, Pending file renames, ConfigMgr, Domain join, Computer rename)
+- Pending reboot status with reasons (Component servicing, Windows Update, ConfigMgr, Domain join, Computer rename)
 
 If a pending reboot is detected, the status badge turns amber. Running a repair on a machine with a pending reboot often wastes time and can leave the system in a mixed state - reboot first, then run the tool.
 
@@ -247,7 +247,7 @@ Launch-SystemRepairTool.bat
   |-- Build XAML window (dark theme)
   |-- Wire UI controls to $Script:UI hashtable
   |-- Detect system manufacturer via WMI
-  |-- Check pending reboot status (5 canonical indicators)
+  |-- Check pending reboot status (4 canonical indicators)
   |-- Check system uptime (Win32_OperatingSystem.LastBootUpTime)
   |-- Populate header status badge (color-coded if reboot pending)
   |-- Check for existing session (resume logic)
@@ -302,7 +302,7 @@ The runspace forces UTF-8 output encoding at startup to prevent native tools (pa
 | Network Diagnostics button says "not found" | `network-diag.bat` not in Tools folder | Same as above |
 | Second UAC prompt on tool launch buttons | Windows requiring re-elevation for child process | Expected behavior on non-domain or high-UAC-policy machines; does not affect functionality |
 | SFC reports "could not perform the requested operation" | CBS store corruption beyond DISM repair capability | Run from a Windows installer USB: `sfc /scannow /offbootdir=C:\ /offwindir=C:\Windows` |
-| Header shows "Reboot Pending" | One of the 5 reboot indicators is set | Reboot the machine before running a repair - mixing pending changes with new updates often causes problems |
+| Header shows "Reboot Pending" | One of the 4 reboot indicators is set | Reboot the machine before running a repair - mixing pending changes with new updates often causes problems |
 
 ## File Inventory
 

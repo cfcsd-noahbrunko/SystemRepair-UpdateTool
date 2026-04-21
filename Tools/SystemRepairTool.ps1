@@ -70,7 +70,7 @@ Write-Host "Assemblies loaded. Initializing..." -ForegroundColor Green
 # patch-level versions (no 1.0.1). Single decimal only.
 # Examples of correct progression: 1.0 -> 1.1 -> 1.2 -> ... -> 1.9 -> 2.0 -> 2.1
 # ### END MAINTAINER NOTE ###
-$Script:Version = "2.4"
+$Script:Version = "2.5"
 
 # ============================================================================
 #  CONSTANTS
@@ -135,7 +135,7 @@ function Get-SystemModelMain {
     catch { "Unknown" }
 }
 
-# Check for a pending reboot using the five canonical Windows indicators.
+# Check for a pending reboot using the canonical Windows indicators.
 # Returns a hashtable: @{ Pending=$bool; Reasons=@(...) } so the GUI can tell
 # the tech WHY a reboot is pending, not just that one is.
 function Get-PendingRebootStatus {
@@ -150,10 +150,11 @@ function Get-PendingRebootStatus {
             $reasons += 'Windows Update'
         }
     } catch { }
-    try {
-        $sm = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name PendingFileRenameOperations -ErrorAction SilentlyContinue
-        if ($sm -and $sm.PendingFileRenameOperations) { $reasons += 'Pending file renames' }
-    } catch { }
+    # Note: PendingFileRenameOperations is deliberately NOT checked. It's set by
+    # almost any MSI uninstall, Windows Update cleanup, or similar routine file
+    # replacement, and almost never actually requires a reboot in practice.
+    # Leaving it in produced false-positive "Reboot Pending" badges on a large
+    # fraction of healthy machines and desensitized techs to the genuine signals.
     try {
         $ccm = [wmiclass]'\\.\root\ccm\ClientSDK:CCM_ClientUtilities'
         if ($ccm) {
@@ -466,7 +467,7 @@ function Get-SystemUptime {
              ROW 4: FOOTER - version + update badge + Open Log button
              ============================================================ -->
         <DockPanel Grid.Row="4" Margin="0,10,0,0">
-            <TextBlock Name="txtVersion" Text="v2.4" DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold" Foreground="#c9d1d9" VerticalAlignment="Center"/>
+            <TextBlock Name="txtVersion" Text="v2.5" DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold" Foreground="#c9d1d9" VerticalAlignment="Center"/>
             <TextBlock Name="txtUpdateBadge" Text="" DockPanel.Dock="Left" FontSize="12" FontWeight="SemiBold" Foreground="#d29922" VerticalAlignment="Center" Margin="12,0,0,0" Cursor="Hand"/>
             <Button Name="btnOpenLog" Content="Open Log" Background="#30363d" Style="{StaticResource ActionButton}" DockPanel.Dock="Right" Width="110" Height="32"/>
         </DockPanel>

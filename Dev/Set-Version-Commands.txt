@@ -1,0 +1,2 @@
+cd C:\SystemRepairTool\Dev
+powershell.exe -ExecutionPolicy Bypass -File .\Set-Version.ps1 -NewVersion #.#
