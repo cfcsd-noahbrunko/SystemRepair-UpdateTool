@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.4
+
+- Added staleness check on launch. The tool fetches `VERSION.txt` from the GitHub repo's raw URL and compares against the running version. If a newer version is available, an amber "Update available: vX.Y (click to view)" badge appears next to the version number in the footer. Clicking the badge opens the repo's releases page.
+- Check runs in a background runspace with a 3-second timeout. Failure to reach GitHub (offline, blocked, timeout) results in a silent skip - the badge simply doesn't appear.
+- No auto-update, no self-modification. The badge is advisory only. Humans decide when to update.
+- Added sanity check on the remote response (must match version regex `\d+\.\d+`) to prevent arbitrary text from being injected into the UI if the URL is redirected.
+- Improved footer version text readability: bumped from 10pt dark-gray (`#484f58`) to 13pt SemiBold light-gray (`#c9d1d9`). Much easier to read at a glance during field work.
+
 ## v2.3
 
 - Fixed Lenovo result parsing. LSU writes per-package install results to a SQLite database at `C:\ProgramData\Lenovo\SystemUpdate\sessionSE\update_history.db`, not a text file as previously assumed.

@@ -70,7 +70,7 @@ Write-Host "Assemblies loaded. Initializing..." -ForegroundColor Green
 # patch-level versions (no 1.0.1). Single decimal only.
 # Examples of correct progression: 1.0 -> 1.1 -> 1.2 -> ... -> 1.9 -> 2.0 -> 2.1
 # ### END MAINTAINER NOTE ###
-$Script:Version = "2.3"
+$Script:Version = "2.4"
 
 # ============================================================================
 #  CONSTANTS
@@ -463,10 +463,11 @@ function Get-SystemUptime {
         </Border>
 
         <!-- ============================================================
-             ROW 4: FOOTER - version + Open Log button
+             ROW 4: FOOTER - version + update badge + Open Log button
              ============================================================ -->
         <DockPanel Grid.Row="4" Margin="0,10,0,0">
-            <TextBlock Name="txtVersion" Text="v2.3" DockPanel.Dock="Left" FontSize="10" Foreground="#484f58" VerticalAlignment="Center"/>
+            <TextBlock Name="txtVersion" Text="v2.4" DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold" Foreground="#c9d1d9" VerticalAlignment="Center"/>
+            <TextBlock Name="txtUpdateBadge" Text="" DockPanel.Dock="Left" FontSize="12" FontWeight="SemiBold" Foreground="#d29922" VerticalAlignment="Center" Margin="12,0,0,0" Cursor="Hand"/>
             <Button Name="btnOpenLog" Content="Open Log" Background="#30363d" Style="{StaticResource ActionButton}" DockPanel.Dock="Right" Width="110" Height="32"/>
         </DockPanel>
     </Grid>
@@ -488,7 +489,7 @@ $names = @(
     'iconOem','txtOemTitle','txtOemStatus','progOem','txtOemDetail',
     'iconWU','txtWUStatus','progWU','txtWUDetail',
     'txtLog','scrollLog',
-    'btnStartFull','btnStartUpdatesOnly','btnCancel','btnStartOver','btnOpenLog','txtVersion',
+    'btnStartFull','btnStartUpdatesOnly','btnCancel','btnStartOver','btnOpenLog','txtVersion','txtUpdateBadge',
     'btnRemovePrinters','btnNetDiag','btnOpenNetDiagLog','btnPaperCut','txtToolsStatus'
 )
 foreach ($n in $names) {
@@ -499,6 +500,102 @@ foreach ($n in $names) {
 # source of truth (update $Script:Version at the top of this file).
 if ($Script:UI['txtVersion']) {
     $Script:UI['txtVersion'].Text = "v$Script:Version"
+}
+
+# ============================================================================
+#  STALENESS CHECK
+# ----------------------------------------------------------------------------
+#  Fires a background web request to VERSION.txt on the GitHub repo. If the
+#  remote version is newer than $Script:Version, shows an amber "Update
+#  available: vX.Y" badge next to the version number. Click the badge to open
+#  the releases page in the default browser.
+#
+#  Failure modes (offline, DNS blocked, GitHub down, malformed response, etc.)
+#  all result in a silent skip. The tool must never block or error out on
+#  this check - it's advisory only.
+# ============================================================================
+$Script:UpdateCheck = @{
+    VersionUrl  = 'https://raw.githubusercontent.com/cfcsd-noahbrunko/SystemRepair-UpdateTool/main/VERSION.txt'
+    ReleasesUrl = 'https://github.com/cfcsd-noahbrunko/SystemRepair-UpdateTool/releases'
+    TimeoutSec  = 3
+}
+
+try {
+    # Use a lightweight runspace instead of Start-Job to keep startup fast.
+    # Start-Job spawns a whole separate pwsh process (~1s overhead); runspaces
+    # are in-process and essentially free.
+    $Script:UpdateRunspace = [runspacefactory]::CreateRunspace()
+    $Script:UpdateRunspace.Open()
+    $Script:UpdatePS = [powershell]::Create()
+    $Script:UpdatePS.Runspace = $Script:UpdateRunspace
+    $null = $Script:UpdatePS.AddScript({
+        param($url, $timeoutSec)
+        try {
+            # Force TLS 1.2 on older Windows where .NET defaults may exclude it
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+            $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec $timeoutSec -ErrorAction Stop
+            $content = "$($resp.Content)".Trim()
+            # Sanity-check the response looks like a version string ("2.4", "10.15", etc.)
+            # to prevent a compromised/redirected URL from putting arbitrary text in the UI
+            if ($content -match '^\d+\.\d+(\.\d+)?$') {
+                return $content
+            }
+            return $null
+        } catch {
+            return $null
+        }
+    }).AddArgument($Script:UpdateCheck.VersionUrl).AddArgument($Script:UpdateCheck.TimeoutSec)
+    $Script:UpdateAsync = $Script:UpdatePS.BeginInvoke()
+
+    # Poll the runspace result via DispatcherTimer - the supported way to
+    # marshal background results into a WPF window without blocking.
+    $Script:UpdateTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $Script:UpdateTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+    $Script:UpdateTimer.Add_Tick({
+        if (-not $Script:UpdateAsync.IsCompleted) { return }
+
+        $Script:UpdateTimer.Stop()
+        try {
+            $remoteVer = $Script:UpdatePS.EndInvoke($Script:UpdateAsync)
+        } catch {
+            $remoteVer = $null
+        } finally {
+            $Script:UpdatePS.Dispose()
+            $Script:UpdateRunspace.Dispose()
+        }
+
+        if (-not $remoteVer) {
+            Write-LogFile "Update check: no response or check skipped."
+            return
+        }
+
+        # Compare versions numerically. Append .0 to normalize "2.3" and "2.3.0"
+        try {
+            $local  = [version]("$Script:Version" + ".0")
+            $remote = [version]("$remoteVer" + ".0")
+        } catch {
+            Write-LogFile "Update check: could not parse version strings local='$Script:Version' remote='$remoteVer'"
+            return
+        }
+
+        if ($remote -gt $local) {
+            Write-LogFile "Update check: newer version available (local=v$Script:Version, remote=v$remoteVer)"
+            $Script:UI['txtUpdateBadge'].Text = "Update available: v$remoteVer (click to view)"
+            $Script:UI['txtUpdateBadge'].Add_MouseLeftButtonUp({
+                try { Start-Process $Script:UpdateCheck.ReleasesUrl } catch { }
+            })
+        } elseif ($remote -lt $local) {
+            # Running a newer version than what's on the repo - usually happens
+            # during dev. Quiet informational log, no UI change.
+            Write-LogFile "Update check: running v$Script:Version, repo shows v$remoteVer (ahead of remote, no action needed)"
+        } else {
+            Write-LogFile "Update check: running latest version (v$Script:Version)"
+        }
+    })
+    $Script:UpdateTimer.Start()
+} catch {
+    # Any failure setting up the check just gets logged - no UI impact
+    Write-LogFile "Update check setup failed: $($_.Exception.Message)"
 }
 
 Write-Host "Window constructed." -ForegroundColor Green
