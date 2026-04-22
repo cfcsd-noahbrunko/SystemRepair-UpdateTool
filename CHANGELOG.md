@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.6
+
+- **Network Diagnostics tool:** Removed the abandoned PDF report generation code. A previous attempt to produce a formatted PDF alongside the text log was scrapped but left behind ~300 lines of inline PowerShell that would sometimes throw errors and create confusing console output suggesting something had failed when nothing had actually gone wrong. Tool now cleanly produces only the text log.
+- **Network Diagnostics tool:** Moved the diagnostic summary (including Wi-Fi SSID, signal, and channel) to the TOP of the log file. Detailed verbose sections follow beneath. This matches how techs actually use the log - skim the summary first, drill into details only if needed.
+- **Network Diagnostics tool:** Fixed an SSID parsing bug. The old code did `!SSID:~1!` to strip the leading space from `netsh wlan show interfaces`, which blindly removed the first character whether or not it was a space. Now uses `for /f "tokens=*"` to trim whitespace robustly. Same fix applied to `OSNAME`, `OSVER`, `MODEL`, and `DNSSERVERS` captures.
+- **Stale Printer Removal tool:** Fixed the repeated per-item confirmation prompts when removing multiple printers. The tool was asking "Delete this key? (Y/N)" for each printer's registry entry AND for each driver's registry entry - on a batch of 5 printers that was up to 15 prompts. Now a single up-front confirmation covers the entire batch, and registry cleanup proceeds without further prompting. The confirmation prompt now also explicitly states "No further prompts after this" so the tech knows to expect a fully automated run.
+
 ## v2.5
 
 - Removed the `PendingFileRenameOperations` check from the pending-reboot detector. That registry value is set by nearly any MSI uninstall, Windows Update cleanup, or routine file replacement, and almost never corresponds to a reboot that actually matters. Including it caused "Reboot Pending" badges to appear on a large fraction of perfectly healthy machines and desensitized techs to the real indicators.

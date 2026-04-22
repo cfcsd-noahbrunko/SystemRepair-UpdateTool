@@ -70,7 +70,7 @@ Write-Host "Assemblies loaded. Initializing..." -ForegroundColor Green
 # patch-level versions (no 1.0.1). Single decimal only.
 # Examples of correct progression: 1.0 -> 1.1 -> 1.2 -> ... -> 1.9 -> 2.0 -> 2.1
 # ### END MAINTAINER NOTE ###
-$Script:Version = "2.5"
+$Script:Version = "2.6"
 
 # ============================================================================
 #  CONSTANTS
@@ -467,7 +467,7 @@ function Get-SystemUptime {
              ROW 4: FOOTER - version + update badge + Open Log button
              ============================================================ -->
         <DockPanel Grid.Row="4" Margin="0,10,0,0">
-            <TextBlock Name="txtVersion" Text="v2.5" DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold" Foreground="#c9d1d9" VerticalAlignment="Center"/>
+            <TextBlock Name="txtVersion" Text="v2.6" DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold" Foreground="#c9d1d9" VerticalAlignment="Center"/>
             <TextBlock Name="txtUpdateBadge" Text="" DockPanel.Dock="Left" FontSize="12" FontWeight="SemiBold" Foreground="#d29922" VerticalAlignment="Center" Margin="12,0,0,0" Cursor="Hand"/>
             <Button Name="btnOpenLog" Content="Open Log" Background="#30363d" Style="{StaticResource ActionButton}" DockPanel.Dock="Right" Width="110" Height="32"/>
         </DockPanel>
@@ -1889,9 +1889,11 @@ $Script:UI['btnNetDiag'].Add_Click({
         return
     }
     try {
-        # /k keeps the cmd window open after the batch finishes.
+        # /c runs the batch and closes cmd when it finishes. The batch itself
+        # auto-opens the log in Notepad before exiting, so the tech still sees
+        # the results without needing the cmd window to linger.
         Start-Process -FilePath 'cmd.exe' `
-                      -ArgumentList @('/k', "`"$Script:NetDiagPath`"") `
+                      -ArgumentList @('/c', "`"$Script:NetDiagPath`"") `
                       -Verb RunAs -ErrorAction Stop | Out-Null
         Set-ToolsStatusMain "Network diagnostics running in a new window. Log will write to Desktop." '#2ea043'
         Add-LogLineMain "[Tools] Launched network-diag.bat"

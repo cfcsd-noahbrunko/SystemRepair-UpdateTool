@@ -235,16 +235,11 @@ function Remove-PrinterFully {
     $regPrinterPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Print\Printers\$cleanName"
     if (Test-Path $regPrinterPath) {
         Write-Host "        [!!] Registry ghost: $regPrinterPath" -ForegroundColor Yellow
-        $confirm = Read-Host "        Delete this key? (Y/N)"
-        if ($confirm -eq 'Y' -or $confirm -eq 'y') {
-            try {
-                Remove-Item -Path $regPrinterPath -Recurse -Force -ErrorAction Stop
-                Write-Host "        [OK] Registry printer key removed." -ForegroundColor Green
-            } catch {
-                Write-Host "        [!!] Failed: $_" -ForegroundColor Red
-            }
-        } else {
-            Write-Host "        [--] Skipped." -ForegroundColor DarkGray
+        try {
+            Remove-Item -Path $regPrinterPath -Recurse -Force -ErrorAction Stop
+            Write-Host "        [OK] Registry printer key removed." -ForegroundColor Green
+        } catch {
+            Write-Host "        [!!] Failed: $_" -ForegroundColor Red
         }
     } else {
         Write-Host "        [--] No printer registry ghost." -ForegroundColor DarkGray
@@ -256,16 +251,11 @@ function Remove-PrinterFully {
         $driverRegPath = "$driverEnvBase\$version\$driverName"
         if (Test-Path $driverRegPath) {
             Write-Host "        [!!] Driver registry ghost: $driverRegPath" -ForegroundColor Yellow
-            $confirm = Read-Host "        Delete this key? (Y/N)"
-            if ($confirm -eq 'Y' -or $confirm -eq 'y') {
-                try {
-                    Remove-Item -Path $driverRegPath -Recurse -Force -ErrorAction Stop
-                    Write-Host "        [OK] Driver registry key removed." -ForegroundColor Green
-                } catch {
-                    Write-Host "        [!!] Failed: $_" -ForegroundColor Red
-                }
-            } else {
-                Write-Host "        [--] Skipped." -ForegroundColor DarkGray
+            try {
+                Remove-Item -Path $driverRegPath -Recurse -Force -ErrorAction Stop
+                Write-Host "        [OK] Driver registry key removed." -ForegroundColor Green
+            } catch {
+                Write-Host "        [!!] Failed: $_" -ForegroundColor Red
             }
         }
     }
@@ -314,7 +304,7 @@ if ($null -eq $selectedIndices) {
 $selectedEntries = $allEntries[$selectedIndices]
 
 # Confirm
-Write-Host "`n  Selected for removal:" -ForegroundColor Yellow
+Write-Host "`n  Selected for removal ($($selectedEntries.Count) item(s)):" -ForegroundColor Yellow
 foreach ($entry in $selectedEntries) {
     $icon = switch ($entry.Source) {
         "RegistryGhost" { "[GHOST]" }
@@ -323,6 +313,9 @@ foreach ($entry in $selectedEntries) {
     }
     Write-Host "    $icon $($entry.Name)" -ForegroundColor White
 }
+
+Write-Host "`n  All selected items will be removed along with their drivers," -ForegroundColor DarkGray
+Write-Host "  ports, and registry keys. No further prompts after this." -ForegroundColor DarkGray
 
 $go = Read-Host "`n  Proceed with removal? (Y/N)"
 if ($go -ne 'Y' -and $go -ne 'y') {
